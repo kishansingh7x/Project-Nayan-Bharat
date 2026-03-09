@@ -37,12 +37,16 @@ Nayan-Bharat is an innovative, mission-driven Progressive Web Application (PWA) 
 
 ---
 
-## 🧠 AI Models
+🧠 AI Model: OcuNet v4
+The core diagnostic engine of Nayan Bharat is powered by OcuNet v4, a specialized deep learning model designed for high-accuracy retinal disease screening.
 
-Nayan-Bharat employs a dual-model strategy to balance accuracy with rural network constraints:
+Model Source: OcuNetV4 on Hugging Face, Link: [https://huggingface.co/utkarshhh29/OcuNetV4/tree/main]
 
-1. **The Edge Triage Model (Browser)**: A heavily quantized **MobileNet** architecture optimized for TensorFlow.js. It runs locally on the device's CPU/GPU, classifying images in ~300ms to immediately route critical ("Severe") cases.
-2. **The Cloud Diagnostic Model (OcuNet v4)**: A robust **PyTorch** ensemble model deployed on SageMaker. When connectivity is established, full-resolution fundus images are analyzed for deep diagnostics mapping specific sub-classes (e.g., *Proliferative DR*, *Incipient Cataract*, *Keratoconus suspect*).
+Architecture: Built on the EfficientNet-B3 backbone, optimized for medical imaging tasks.
+
+Capabilities: Performs automated detection of Diabetic Retinopathy, Glaucoma, and Cataract from fundus images.
+
+Deployment: Hosted as a live inference endpoint on Amazon SageMaker (ml.m5.large) for real-time analysis.
 
 ---
 
