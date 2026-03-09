@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nayan-Bharat Scan App</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Ionicons for icons -->
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <!-- TensorFlow.js and MobileNet for Edge AI Inference -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+    <!-- Bhashini Localization API Stub -->
+    <script>
+        // Stub for Bhashini Language Translation
+        window.bhashiniConfig = {
+            apiKey: 'YOUR_BHASHINI_API_KEY',
+            defaultLang: 'en',
+            supportedLangs: ['en', 'hi', 'bn', 'ta', 'te', 'mr']
+        };
+    </script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- SIDE NAVIGATION (Desktop) -->
+        <aside class="side-nav hidden" id="main-nav">
+            <div class="logo-area side-logo">
+                <ion-icon name="eye-outline"></ion-icon>
+                <h1>Nayan-Bharat</h1>
+            </div>
+
+            <div class="nav-links">
+                <div class="nav-item " id="nav-patients">
+                    <ion-icon name="people-outline"></ion-icon>
+                    <span data-i18n="nav_patients">Patients</span>
+                </div>
+                <div class="nav-item" id="nav-referrals">
+                    <ion-icon name="calendar-outline"></ion-icon>
+                    <span data-i18n="nav_referrals">Referrals</span>
+                </div>
+                <div class="nav-item active" id="nav-scan">
+                    <ion-icon name="scan-circle-outline" class="nav-scan-icon"></ion-icon>
+                    <span data-i18n="nav_scan">Scan</span>
+                </div>
+                <div class="nav-item" id="nav-analytics">
+                    <ion-icon name="stats-chart-outline"></ion-icon>
+                    <span data-i18n="nav_stats">Stats</span>
+                </div>
+                <div class="nav-item" id="nav-sync">
+                    <ion-icon name="cloud-upload-outline"></ion-icon>
+                    <span data-i18n="nav_sync">Sync</span>
+                </div>
+            </div>
+        </aside>
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Screen 0: Login (Standalone fullscreen) -->
+        <section id="screen-login" class="screen active login-screen" style="width: 100vw; height: 100vh;">
+            <div class="login-container">
+                <div class="login-logo">
+                    <ion-icon name="eye-outline"></ion-icon>
+                    <h1>Nayan-Bharat</h1>
+                    <p class="login-subtitle" data-i18n="login_subtitle">ASHA Worker Portal</p>
+                </div>
+
+                <div class="login-form">
+                    <div class="input-group">
+                        <label for="login-id" data-i18n="login_id_label">Worker ID</label>
+                        <div class="input-with-icon">
+                            <ion-icon name="person-outline"></ion-icon>
+                            <input type="text" id="login-id" data-i18n="login_id_placeholder"
+                                placeholder="e.g. AW-84920" value="AW-84920">
+                        </div>
+                    </div>
+
+                    <div class="input-group mt-3">
+                        <label for="login-otp" data-i18n="login_otp_label">OTP / PIN</label>
+                        <div class="input-with-icon">
+                            <ion-icon name="keypad-outline"></ion-icon>
+                            <input type="password" id="login-otp" data-i18n="login_otp_placeholder"
+                                placeholder="Enter PIN or OTP" class="otp-input" value="1234">
+                        </div>
+                    </div>
+
+                    <button id="btn-login" class="btn btn-primary btn-large mt-4" data-i18n="login_btn">
+                        Login Securely
+                    </button>
+
+                    <div class="biometric-login">
+                        <p data-i18n="login_or">Or login with</p>
+                        <button id="btn-biometric" class="btn btn-secondary">
+                            <ion-icon name="finger-print-outline"></ion-icon>
+                            <span data-i18n="login_biometric">Biometric Scan</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MAIN WRAPPER (Header + Content) -->
+        <div class="main-wrapper">
+            <!-- HEADER -->
+            <header class="app-header">
+                <button class="hamburger-btn" id="hamburger-btn" aria-label="Open menu">
+                    <ion-icon name="menu-outline"></ion-icon>
+                </button>
+                <div class="header-title">
+                    <h2 id="current-page-title" style="margin:0; font-size: 18px; display: none;">Dashboard</h2>
+                </div>
+                <div class="header-actions" style="display: flex; align-items: center; gap: 12px; margin-left: auto;">
+                    <!-- Connectivity Indicator -->
+                    <div id="connectivity-indicator" class="status-badge-small"
+                        style="margin:0; padding: 6px 10px; font-size: 12px; font-weight: 600; border-radius: 12px; background: #e6f4ea; color: #166534; display: flex; align-items: center; gap: 6px; border: 1px solid #cce8d5;">
+                        <span class="status-dot green" style="background-color: #4ade80;"></span>
+                        <span id="connectivity-text">Online</span>
+                    </div>
+
+                    <!-- Profile Avatar & Dropdown -->
+                    <div class="user-profile-container" style="position: relative;">
+                        <div class="user-profile" id="btn-profile" style="cursor: pointer; padding: 4px;">
+                            <ion-icon name="person-circle-outline"></ion-icon>
+                        </div>
+
+                        <!-- Dropdown Menu -->
+                        <div class="profile-dropdown" id="profile-dropdown" style="display: none;">
+                            <div class="dropdown-header">
+                                <strong>Kiran Devi</strong>
+                                <span>AW-84920</span>
+                            </div>
+                            <div class="dropdown-divider"></div>
+
+                            <div class="dropdown-item">
+                                <ion-icon name="language-outline"></ion-icon>
+                                <select id="language-switcher" class="lang-select">
+                                    <option value="en">English</option>
+                                    <option value="hi">हिंदी</option>
+                                    <option value="bn">বাংলা</option>
+                                    <option value="ta">தமிழ்</option>
+                                    <option value="te">తెలుగు</option>
+                                    <option value="mr">मराठी</option>
+                                </select>
+                            </div>
+
+                            <button class="dropdown-item" id="btn-toggle-theme">
+                                <ion-icon name="moon-outline" id="theme-icon"></ion-icon>
+                                <span id="theme-text" data-i18n="dark_mode">Dark Mode</span>
+                            </button>
+
+                            <div class="dropdown-divider"></div>
+
+                            <button class="dropdown-item text-danger" id="btn-logout">
+                                <ion-icon name="log-out-outline"></ion-icon>
+                                <span data-i18n="logout">Logout</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- MAIN CONTENT AREA -->
+            <main id="main-content" class="content-area">
+                <!-- Screen 1: Dashboard -->
+                <section id="screen-dashboard" class="screen">
+                    <div class="welcome-card">
+                        <div class="greeting">
+                            <h2 data-i18n="greeting_asha">Namaste, ASHA Worker</h2>
+                            <!-- We wrap the static part to translate "ID:" and combine with var logic later, or keep simple -->
+                            <p>Kiran Devi • ID: AW-84920</p>
+                        </div>
+                        <div class="status-badge sync-status">
+                            <span class="status-dot green"></span>
+                            <span data-i18n="cloud_sync_active">Cloud Sync: Active</span>
+                        </div>
+                    </div>
+
+                    <div class="action-container">
+                        <button id="btn-start-screening" class="btn btn-primary btn-large">
+                            <ion-icon name="camera-outline"></ion-icon>
+                            <span data-i18n="start_screening">Start New Screening</span>
+                        </button>
+
+                        <div class="quick-stats">
+                            <div class="stat-box">
+                                <span class="stat-num">12</span>
+                                <span class="stat-label" data-i18n="scans_today">Scans Today</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-num">3</span>
+                                <span class="stat-label" data-i18n="referrals">Referrals</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Screen 2: Capture Viewfinder -->
+                <section id="screen-capture" class="screen">
+                    <div class="smart-quality-bar">
+                        <div class="quality-item" id="q-focus">
+                            <ion-icon name="contract-outline"></ion-icon>
+                            <span data-i18n="capture_focus">Focus</span>
+                            <div class="q-indicator"></div>
+                        </div>
+                        <div class="quality-item" id="q-lighting">
+                            <ion-icon name="sunny-outline"></ion-icon>
+                            <span data-i18n="capture_light">Light</span>
+                            <div class="q-indicator"></div>
+                        </div>
+                        <div class="quality-item" id="q-motion">
+                            <ion-icon name="hand-right-outline"></ion-icon>
+                            <span data-i18n="capture_motion">Motion</span>
+                            <div class="q-indicator"></div>
+                        </div>
+                    </div>
+
+                    <div class="camera-viewfinder">
+                        <div class="camera-feed-mock"></div>
+                        <video id="camera-feed" autoplay playsinline
+                            style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 1; display: none;"></video>
+                        <div class="alignment-guide">
+                            <div class="alignment-circle">
+                                <div class="crosshair-h"></div>
+                                <div class="crosshair-v"></div>
+                            </div>
+                        </div>
+                        <!-- Real-time instruction overlay -->
+                        <div class="instruction-overlay" data-i18n="capture_instruction">
+                            Align the camera with the pupil. Hold steady.
+                        </div>
+                    </div>
+
+                    <div class="capture-controls">
+                        <button class="btn btn-secondary" id="btn-cancel-capture" data-i18n="btn_cancel">Cancel</button>
+                        <button class="btn-capture" id="btn-take-picture">
+                            <div class="capture-inner"></div>
+                        </button>
+                        <div class="capture-spacer" style="display: flex; justify-content: flex-end;">
+                            <input type="file" id="image-upload" accept="image/*" style="display: none;">
+                            <button class="btn-icon" id="btn-upload-image" style="color: white;" title="Upload Image">
+                                <ion-icon name="image-outline"></ion-icon>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Screen 3: Patient Form & Link -->
+                <section id="screen-patient-form" class="screen">
+                    <div class="page-title">
+                        <button class="btn-icon" id="btn-back-to-capture"><ion-icon
+                                name="arrow-back-outline"></ion-icon></button>
+                        <h2 data-i18n="patient_details">Patient Details</h2>
+                    </div>
+
+                    <div class="form-container">
+                        <div class="scan-preview-small">
+                            <!-- Captured image thumbnail -->
+                            <div class="thumnail-mock" id="mock-thumbnail"></div>
+                            <img id="preview-thumbnail"
+                                style="display: none; width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
+                            <span class="scan-timestamp" id="scan-time">12 May, 10:45 AM</span>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="abha-id" data-i18n="abha_id_label">ABHA ID</label>
+                            <div class="input-with-icon">
+                                <ion-icon name="card-outline"></ion-icon>
+                                <input type="text" id="abha-id" data-i18n="abha_id_placeholder"
+                                    placeholder="e.g. 12-3456-7890-1234">
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="patient-name" data-i18n="patient_name_label">Patient Name (Optional)</label>
+                            <input type="text" id="patient-name" data-i18n="patient_name_placeholder"
+                                placeholder="Enter name">
+                        </div>
+
+                        <!-- ABDM Consent (Integration with National Health Infrastructure) -->
+                        <div class="input-group"
+                            style="display: flex; align-items: flex-start; gap: 10px; margin-top: 24px;">
+                            <input type="checkbox" id="abdm-consent" checked
+                                style="width: 20px; height: 20px; accent-color: var(--color-navy); margin-top: 2px;">
+                            <label for="abdm-consent" data-i18n="abdm_consent_text"
+                                style="font-weight: normal; font-size: 13px; color: var(--color-text-muted); line-height: 1.4; margin-bottom: 0;">
+                                I confirm patient consent to link this screening record to their Ayushman Bharat Health
+                                Account (ABHA) locker via ABDM Gateway.
+                            </label>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn btn-primary btn-large" id="btn-run-analysis" data-i18n="btn_analyze">
+                                <ion-icon name="analytics-outline"></ion-icon>
+                                Analyze & Save
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Loading Overlay for Edge AI Inference -->
+                    <div id="ai-loading-overlay" class="loading-overlay hidden">
+                        <div class="spinner"></div>
+                        <h3 data-i18n="ai_loading_title">Running Edge AI Analysis...</h3>
+                        <p data-i18n="ai_loading_subtitle">TensorFlow Lite (Quantized MobileNetV3)</p>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="ai-progress"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Screen 4: Triage Results -->
+                <section id="screen-results" class="screen">
+                    <div class="page-title">
+                        <button class="btn-icon" id="btn-back-to-dashboard"><ion-icon
+                                name="close-outline"></ion-icon></button>
+                        <h2 data-i18n="screening_results">Screening Results</h2>
+                    </div>
+
+                    <div class="desktop-constrained">
+                        <!-- Overall Summary Header -->
+                        <div class="result-summary-header" id="vulnerability-header">
+                            <ion-icon name="alert-circle" id="vuln-icon"></ion-icon>
+                            <h3 id="vuln-level">Analyzing...</h3>
+                            <span class="ai-source-badge" id="ai-source-badge"></span>
+                        </div>
+
+                        <!-- Individual Disease Cards -->
+                        <div class="disease-cards-container" id="disease-cards-container">
+                            <!-- DR Card -->
+                            <div class="disease-card" id="card-dr">
+                                <div class="disease-card-icon">
+                                    <ion-icon name="eye-outline"></ion-icon>
+                                </div>
+                                <div class="disease-card-body">
+                                    <h4 data-i18n="dr_label">Diabetic Retinopathy (DR)</h4>
+                                    <p class="disease-status" id="dr-result">—</p>
+                                </div>
+                                <div class="disease-card-severity" id="dr-severity">
+                                    <span class="severity-dot"></span>
+                                </div>
+                            </div>
+
+                            <!-- Cataract Card -->
+                            <div class="disease-card" id="card-cataract">
+                                <div class="disease-card-icon">
+                                    <ion-icon name="ellipse-outline"></ion-icon>
+                                </div>
+                                <div class="disease-card-body">
+                                    <h4 data-i18n="cataract_label">Cataract</h4>
+                                    <p class="disease-status" id="cataract-result">—</p>
+                                </div>
+                                <div class="disease-card-severity" id="cataract-severity">
+                                    <span class="severity-dot"></span>
+                                </div>
+                            </div>
+
+                            <!-- Glaucoma Card -->
+                            <div class="disease-card" id="card-glaucoma">
+                                <div class="disease-card-icon">
+                                    <ion-icon name="disc-outline"></ion-icon>
+                                </div>
+                                <div class="disease-card-body">
+                                    <h4 data-i18n="glaucoma_label">Glaucoma Risk</h4>
+                                    <p class="disease-status" id="glaucoma-result">—</p>
+                                </div>
+                                <div class="disease-card-severity" id="glaucoma-severity">
+                                    <span class="severity-dot"></span>
+                                </div>
+                            </div>
+
+                            <!-- AMD Card -->
+                            <div class="disease-card" id="card-amd">
+                                <div class="disease-card-icon">
+                                    <ion-icon name="grid-outline"></ion-icon>
+                                </div>
+                                <div class="disease-card-body">
+                                    <h4 data-i18n="amd_label">Age-Related Macular Degeneration</h4>
+                                    <p class="disease-status" id="amd-result">—</p>
+                                </div>
+                                <div class="disease-card-severity" id="amd-severity">
+                                    <span class="severity-dot"></span>
+                                </div>
+                            </div>
+
+                            <!-- Keratoconus Card -->
+                            <div class="disease-card" id="card-kerato">
+                                <div class="disease-card-icon">
+                                    <ion-icon name="contract-outline"></ion-icon>
+                                </div>
+                                <div class="disease-card-body">
+                                    <h4 data-i18n="kerato_label">Keratoconus</h4>
+                                    <p class="disease-status" id="kerato-result">—</p>
+                                </div>
+                                <div class="disease-card-severity" id="kerato-severity">
+                                    <span class="severity-dot"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Suggestion / Warning -->
+                        <div class="action-container" id="referral-action">
+                            <div id="suggestion-box"
+                                style="margin-bottom: 16px; padding: 16px; background-color: var(--color-surface); border-radius: var(--border-radius); border: 1px solid var(--color-border); font-size: 14px; text-align: center; color: var(--color-text-main); display: none;">
+                            </div>
+                            <div class="warning-text" id="warning-text">Immediate consultation required.</div>
+                            <button class="btn btn-danger btn-large" id="btn-book-referral">
+                                <ion-icon name="medkit"></ion-icon>
+                                <span data-i18n="btn_book_consult">Book eSanjeevani Tele-Consult</span>
+                            </button>
+                        </div>
+
+                        <div class="action-container mt-3" style="margin-bottom: 20px;">
+                            <button class="btn btn-secondary btn-large" id="btn-done" data-i18n="btn_done_return">
+                                Done & Return
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Screen 5: Patients List -->
+                <section id="screen-patients" class="screen">
+                    <div class="search-bar" style="margin-top: 20px;">
+                        <div class="input-with-icon">
+                            <ion-icon name="search-outline"></ion-icon>
+                            <input type="text" data-i18n="search_placeholder" placeholder="Search by name or ABHA ID">
+                        </div>
+                    </div>
+
+                    <div class="patient-list">
+                        <div class="patient-card"
+                            onclick="viewPatientDetails('Ramesh Kumar', '12-3456-7890-1234', 'Pending Referral', 'Proliferative DR', 'Moderate', 'High Risk (Patient CDR: 0.7 | Normal: < 0.4)', 'Drusen Present', 'Suspect Thinning', 'Dr. Sharma', 'Pending Consult')">
+                            <div class="patient-info">
+                                <h4>Ramesh Kumar</h4>
+                                <p>ID: 12-3456-7890-1234</p>
+                                <span class="status-badge-small warning">Pending Referral</span>
+                            </div>
+                            <ion-icon name="chevron-forward-outline"></ion-icon>
+                        </div>
+                        <div class="patient-card"
+                            onclick="viewPatientDetails('Sita Devi', '98-7654-3210-9876', 'Cleared', 'Normal', 'None', 'Normal (Patient CDR: 0.3 | Normal: < 0.4)', 'No Drusen', 'Normal', 'None', 'Completed')">
+                            <div class="patient-info">
+                                <h4>Sita Devi</h4>
+                                <p>ID: 98-7654-3210-9876</p>
+                                <span class="status-badge-small normal">Cleared</span>
+                            </div>
+                            <ion-icon name="chevron-forward-outline"></ion-icon>
+                        </div>
+                        <div class="patient-card"
+                            onclick="viewPatientDetails('Vikram Singh', '45-6789-0123-4567', 'Treatment Ongoing', 'Severe DR', 'Mild', 'Monitor (Patient CDR: 0.5 | Normal: < 0.4)', 'Drusen Present', 'Normal', 'Dr. Patel', 'Laser Therapy')">
+                            <div class="patient-info">
+                                <h4>Vikram Singh</h4>
+                                <p>ID: 45-6789-0123-4567</p>
+                                <span class="status-badge-small normal">Cleared</span>
+                            </div>
+                            <ion-icon name="chevron-forward-outline"></ion-icon>
+                        </div>
+                    </div>
+
+                    <div class="action-container" style="margin-top: auto; padding-top: 20px;">
+                        <button class="btn btn-primary btn-large" id="btn-new-patient">
+                            <ion-icon name="person-add-outline"></ion-icon>
+                            <span data-i18n="btn_register_patient">Register New Patient</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Screen 5b: Patient Details View -->
+                <section id="screen-patient-details" class="screen">
+                    <div class="page-title">
+                        <button class="btn-icon" id="btn-back-to-patients"><ion-icon
+                                name="arrow-back-outline"></ion-icon></button>
+                        <h2>Patient Details</h2>
+                    </div>
+
+                    <div class="desktop-constrained">
+                        <div class="patient-profile-header">
+                            <div class="profile-avatar"><ion-icon name="person"></ion-icon></div>
+                            <h3 id="detail-name">Ramesh Kumar</h3>
+                            <p id="detail-id">ID: 12-3456-7890-1234</p>
+                            <div style="margin-top: 12px;">
+                                <span id="detail-status-badge" class="status-badge-small warning">Pending
+                                    Referral</span>
+                            </div>
+                        </div>
+
+                        <div class="details-section">
+                            <div class="details-section-header">
+                                <ion-icon name="medical"></ion-icon> <span data-i18n="latest_diagnosis">Latest
+                                    Diagnosis</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Diabetic Retinopathy (DR)</span>
+                                <span class="detail-value" id="detail-dr">Proliferative DR</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Cataract</span>
+                                <span class="detail-value" id="detail-cataract">Moderate</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Glaucoma Risk</span>
+                                <span class="detail-value" id="detail-glaucoma">High Risk (Patient CDR: 0.7 | Normal:
+                                    &lt;
+                                    0.4)</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">AMD</span>
+                                <span class="detail-value" id="detail-amd">Drusen Present</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Keratoconus</span>
+                                <span class="detail-value" id="detail-kerato">Suspect Thinning</span>
+                            </div>
+                            -->
+                        </div>
+
+                        <div class="details-section">
+                            <div class="details-section-header">
+                                <ion-icon name="medkit"></ion-icon> <span data-i18n="treatment_status">Treatment
+                                    Status</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label" data-i18n="assigned_doctor">Assigned Doctor</span>
+                                <span class="detail-value" id="detail-doctor">Dr. Sharma</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label" data-i18n="current_status">Current Status</span>
+                                <span class="detail-value" id="detail-treatment">Pending Tele-Consult</span>
+                            </div>
+                        </div>
+
+                        <div class="action-container mt-3">
+                            <button class="btn btn-secondary btn-large" id="btn-view-history" style="width: 100%;">
+                                <ion-icon name="time-outline"></ion-icon> <span data-i18n="btn_view_history">View Full
+                                    History</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Screen 6: Cloud Sync -->
+                <section id="screen-sync" class="screen">
+                    <div class="sync-status-card" style="margin-top: 20px;">
+                        <div class="sync-icon-large">
+                            <ion-icon name="cloud-done-outline"></ion-icon>
+                        </div>
+                        <h3 data-i18n="sync_title">AWS S3 & KMS Secure Sync</h3>
+                        <p data-i18n="sync_subtitle">All data is encrypted before upload.</p>
+
+                        <div class="sync-stats">
+                            <div class="sync-stat-item">
+                                <span class="sync-num">0</span>
+                                <span class="sync-label" data-i18n="sync_pending">Pending</span>
+                            </div>
+                            <div class="sync-stat-item">
+                                <span class="sync-num">12</span>
+                                <span class="sync-label" data-i18n="sync_today">Synced Today</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-container mt-4">
+                        <button class="btn btn-secondary btn-large" id="btn-force-sync">
+                            <ion-icon name="sync-outline"></ion-icon>
+                            <span data-i18n="btn_force_sync">Force Sync Now</span>
+                        </button>
+                    </div>
+
+                    <div class="connection-status mt-4 text-center">
+                        <p><ion-icon name="wifi-outline" style="color:var(--color-normal)"></ion-icon> <span
+                                data-i18n="connected_status">Connected to
+                                Wi-Fi /
+                                4G</span></p>
+                    </div>
+                </section>
+
+                <!-- Screen 7: Referrals (eSanjeevani Integration) -->
+                <section id="screen-referrals" class="screen">
+                    <div class="action-container" style="margin-top: 20px;">
+                        <button class="btn btn-primary btn-large" id="btn-new-consult">
+                            <ion-icon name="medkit-outline"></ion-icon>
+                            <span data-i18n="btn_new_consult">New eSanjeevani Consult</span>
+                        </button>
+                    </div>
+
+                    <div class="patient-list" style="margin-top: 20px;">
+                        <h3 data-i18n="upcoming_appointments"
+                            style="padding: 0 20px; font-size: 14px; color: var(--color-text-muted);">Upcoming
+                            Appointments
+                        </h3>
+                        <div class="patient-card">
+                            <div class="patient-info">
+                                <h4>Ramesh Kumar</h4>
+                                <p>Dr. Sharma (Ophthalmologist) • Today, 3:00 PM</p>
+                                <span class="status-badge-small"
+                                    style="background-color: var(--color-navy); color: white;">Confirmed</span>
+                            </div>
+                            <a href="tel:+919876543210"
+                                style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px; color: var(--color-navy); text-decoration: none;">
+                                <div
+                                    style="display: flex; align-items: center; gap: 4px; font-weight: 600; font-size: 14px;">
+                                    <ion-icon name="call-outline"></ion-icon>
+                                    <span>+91 98765 43210</span>
+                                </div>
+                                <span style="font-size: 11px; color: gray; font-weight: 400;">Reception</span>
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Screen 8: Analytics (AWS HealthLake Representation) -->
+                <section id="screen-analytics" class="screen">
+                    <div class="welcome-card"
+                        style="margin: 20px; border-radius: var(--border-radius-lg); margin-top: 20px;">
+                        <h3 data-i18n="analytics_region">Your Region: Block A</h3>
+                        <p data-i18n="analytics_insights">Aggregated insights from AWS HealthLake</p>
+
+                        <div class="quick-stats" style="margin-top: 16px;">
+                            <div class="stat-box">
+                                <span class="stat-num" id="total-screened-count">142</span>
+                                <span class="stat-label" data-i18n="total_screened">Total Screened</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-num" style="color: var(--color-severe);" id="dr-prevalence">18%</span>
+                                <span class="stat-label" data-i18n="dr_prevalence">DR Prevalence</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-container">
+                        <div
+                            style="background: var(--color-surface); padding: 16px; border-radius: var(--border-radius); border: 1px solid var(--color-border); text-align: center;">
+                            <ion-icon name="bar-chart-outline"
+                                style="font-size: 48px; color: var(--color-navy-light); margin-bottom: 8px;"></ion-icon>
+                            <p data-i18n="analytics_web_notice">Detailed demographic breakdown available on Web Portal.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+        </div><!-- End Main Wrapper -->
+
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Full History Modal -->
+    <div id="history-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="history_modal_title">Full Medical History</h2>
+                <button class="btn-icon" id="btn-close-history"><ion-icon name="close-outline"></ion-icon></button>
+            </div>
+            <div class="modal-body">
+                <div class="history-item">
+                    <div class="history-date">Mar 01, 2026</div>
+                    <div class="history-details">
+                        <strong>Follow-up Consultation</strong>
+                        <p>Dr. Sharma noted mild progression in Cataract (Left Eye). Prescribed eye drops and
+                            recommended surgery if vision deteriorates further.</p>
+                        <p class="history-meta">Vitals Check: BP 120/80, Sugar 140 mg/dL</p>
+                    </div>
+                </div>
+                <div class="history-item">
+                    <div class="history-date">Jan 15, 2026</div>
+                    <div class="history-details">
+                        <strong>Initial Screening</strong>
+                        <p>ASHA Worker Kiran conducted an at-home AI screening. Detected signs of Proliferative Diabetic
+                            Retinopathy and moderate Cataract.</p>
+                        <p class="history-meta">Confidence Score: DR 94.2%, Cataract 88.5%</p>
+                    </div>
+                </div>
+                <div class="history-item">
+                    <div class="history-date">Nov 10, 2025</div>
+                    <div class="history-details">
+                        <strong>General Checkup</strong>
+                        <p>Patient complained of blurry vision and difficulty seeing at night. Referred for specialized
+                            eye screening.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
