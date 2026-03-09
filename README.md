@@ -44,7 +44,6 @@ The core diagnostic engine of Nayan Bharat is powered by OcuNet v4, a specialize
 * **Architecture:** Built on the EfficientNet-B3 backbone, optimized for medical imaging tasks.
 * **Capabilities:** Performs automated detection of Diabetic Retinopathy, Glaucoma, and Cataract from fundus images.
 * **Deployment:** Hosted as a live inference endpoint on Amazon SageMaker (`ml.m5.large`) for real-time analysis.
-Deployment: Hosted as a live inference endpoint on Amazon SageMaker (ml.m5.large) for real-time analysis.
 
 ---
 
